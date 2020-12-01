@@ -27,6 +27,7 @@ ONE_18DEC = 1000000000000000000
 ONE_6DEC = 1000000
 ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 UNIPOOL_ORACLE_ADDR = '0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc'
+MAIN_ASSET = 'ESD'
 CIRCULATING_EXCLUDED = {
             'MPH': [
                 '0xd48Df82a6371A9e0083FbfC0DF3AF641b8E21E44',
@@ -46,18 +47,12 @@ activity_start = discord.Streaming(name='network reboot',url='https://etherscan.
 update_index = 0
 
 ASSETS = {
-    'MPH': {
-        'addr':'0x8888801aF4d980682e47f1A9036e589479e835C5',
-        'pool':'0x4D96369002fc5b9687ee924d458A7E5bAa5df34E',
+    'ESD': {
+        'addr':'0x36F3FD68E7325a35EB768F1AedaAe9EA0689d723',
+        'pool':'0x88ff79eB2Bc5850F27315415da8685282C7610F9',
         'rewards':'',
         'poolnum':'token0'
         },
-    'oldMPH': {
-        'addr':'0x75A1169E51A3C6336Ef854f76cDE949F999720B1',
-        'pool':'0xfd9aACca3c5F8EF3AAa787E5Cb8AF0c041D8875f',
-        'rewards':'0x75A1169E51A3C6336Ef854f76cDE949F999720B1',
-        'poolnum':'token0'
-        }
 }
 
 @client.event
@@ -76,12 +71,12 @@ async def update_price():
     poolvals = pool_contract.functions['getReserves']().call()
     oraclevals = oracle_contract.functions['getReserves']().call()
     print(f'calculating price...')
-    oracle_price = controller_contract.functions['quote'](ONE_6DEC, oraclevals[0], oraclevals[1]).call()*10**-18
-    print(f'oracle price: {oracle_price}')
-    token_price = controller_contract.functions['quote'](ONE_18DEC, poolvals[0], poolvals[1]).call()*10**-18
-    price = token_price / oracle_price
+    #oracle_price = controller_contract.functions['quote'](ONE_6DEC, oraclevals[0], oraclevals[1]).call()*10**-18
+    #print(f'oracle price: {oracle_price}')
+    token_price = controller_contract.functions['quote'](ONE_18DEC, poolvals[0], poolvals[1]).call()*10**-6
+    price = token_price #/ oracle_price
     print(f'updating the price...')
-    msg = f'${price:0.2f} {asset}'
+    msg = f'${price:0.4f} {asset}'
     new_price = discord.Streaming(name=msg,url='https://etherscan.io/address/0x284fa4627AF7Ad1580e68481D0f9Fc7e5Cf5Cf77')
     print(msg)
     await client.change_presence(activity=new_price)
@@ -150,16 +145,16 @@ async def on_message(msg):
                     )
             await msg.channel.send(embed=embed)
         elif '!uniswap' in msg.content:
-            asset = 'MPH'
+            asset = MAIN_ASSET
             uni_addr, uni_deposit_token, uni_deposit_pairing, uni_token_frac = get_uniswapstate(asset)
             embed = discord.Embed(
-                    title=f':mag: MPH:ETH Uniswap Pool',
+                    title=f':mag: {asset} Uniswap Pool',
                     description=f':bank: Uniswap contract: [{uni_addr}](https://etherscan.io/address/{uni_addr})\n'
-                                f':moneybag: Liquidity: `{uni_deposit_token:,.2f}` {asset} (`{100*uni_token_frac:.2f}%` of supply), `{uni_deposit_pairing:,.2f}` ETH\n'
+                                f':moneybag: Liquidity: `{uni_deposit_token:,.2f}` {asset} (`{100*uni_token_frac:.2f}%` of supply), `{uni_deposit_pairing:,.2f}` USDC\n'
                                 f':arrows_counterclockwise: [Trade {asset}](https://app.uniswap.org/#/swap?outputCurrency={ASSETS[asset]["addr"]}), '
-                                f'[Add Liquidity](https://app.uniswap.org/#/add/eth/{ASSETS[asset]["addr"]}), '
-                                f'[Remove Liquidity](https://app.uniswap.org/#/remove/ETH/{ASSETS[asset]["addr"]})\n'
-                                f':bar_chart: [{asset}:ETH Uniswap chart](https://www.dextools.io/app/uniswap/pair-explorer/{uni_addr})'
+                                f'[Add Liquidity](https://app.uniswap.org/#/add/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/{ASSETS[asset]["addr"]}), '
+                                f'[Remove Liquidity](https://app.uniswap.org/#/remove/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/{ASSETS[asset]["addr"]})\n'
+                                f':bar_chart: [{asset}:USDC Uniswap chart](https://www.dextools.io/app/uniswap/pair-explorer/{uni_addr})'
                     )
             await msg.channel.send(embed=embed)
         elif '!incentives' in msg.content or '!farm' in msg.content:
