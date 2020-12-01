@@ -13,7 +13,6 @@ from web3 import Web3
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-
 DISCORD_WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 NODE_URL = os.getenv("NODE_URL")
@@ -25,77 +24,41 @@ UNIPOOL_ABI = os.getenv("UNIPOOL_ABI")
 VAULT_ABI = os.getenv("VAULT_ABI")
 PS_ABI = os.getenv("PS_ABI")
 ONE_18DEC = 1000000000000000000
+ONE_6DEC = 1000000
 ZERO_ADDR = '0x0000000000000000000000000000000000000000'
-FARM_ADDR = '0xa0246c9032bC3A600820415aE600c6388619A14D'
+UNIPOOL_ORACLE_ADDR = '0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc'
+CIRCULATING_EXCLUDED = {
+            'MPH': [
+                '0xd48Df82a6371A9e0083FbfC0DF3AF641b8E21E44',
+                '0x56f34826Cc63151f74FA8f701E4f73C5EAae52AD',
+                '0xfecBad5D60725EB6fd10f8936e02fa203fd27E4b',
+                '0x8c5ddBB0fd86B6480D81A1a5872a63812099C043',
+            ]
+            }
 
 w3 = Web3(Web3.HTTPProvider(NODE_URL))
 controller_contract = w3.eth.contract(address=UNIROUTER_ADDR, abi=UNIROUTER_ABI)
-pool_contract = w3.eth.contract(address=UNIPOOL_ADDR, abi=UNIPOOL_ABI)
-
-vaults = {
-  '0x8e298734681adbfC41ee5d17FF8B0d6d803e7098': {'asset': 'fWETH', 'decimals': 18,},
-  '0xe85C8581e60D7Cd32Bbfd86303d2A4FA6a951Dac': {'asset': 'fDAI', 'decimals': 18,},
-  '0xc3F7ffb5d5869B3ade9448D094d81B0521e8326f': {'asset': 'fUSDC', 'decimals': 6,},
-  '0xc7EE21406BB581e741FBb8B21f213188433D9f2F': {'asset': 'fUSDT', 'decimals': 6,},
-  '0xF2B223Eb3d2B382Ead8D85f3c1b7eF87c1D35f3A': {'asset': 'FARM yDAI+yUSDC+yUSDT+yTUSD', 'decimals': 18,},
-  '0xfBe122D0ba3c75e1F7C80bd27613c9f35B81FEeC': {'asset': 'fRenBTC', 'decimals': 8,},
-  '0xc07EB91961662D275E2D285BdC21885A4Db136B0': {'asset': 'fWBTC', 'decimals': 8,},
-  '0x192E9d29D43db385063799BC239E772c3b6888F3': {'asset': 'fCRVRenWBTC', 'decimals': 18,},
-  '0xb1FeB6ab4EF7d0f41363Da33868e85EB0f3A57EE': {'asset': 'fUNI-ETH-WBTC', 'decimals': 18,},
-  '0xB19EbFB37A936cCe783142955D39Ca70Aa29D43c': {'asset': 'fUNI-ETH-USDT', 'decimals': 18,},
-  '0x63671425ef4D25Ec2b12C7d05DE855C143f16e3B': {'asset': 'fUNI-ETH-USDC', 'decimals': 18,},
-  '0x1a9F22b4C385f78650E7874d64e442839Dc32327': {'asset': 'fUNI-ETH-DAI', 'decimals': 18,},
-  '0x8f5adC58b32D4e5Ca02EAC0E293D35855999436C': {'asset': 'FARM', 'decimals': 18,},
-}
-
-
-vault_addr = {
-    'fdai'        : {'addr': '0xab7FA2B2985BCcfC13c6D86b1D5A17486ab1e04C',},
-    'fusdc'       : {'addr': '0xf0358e8c3CD5Fa238a29301d0bEa3D63A17bEdBE',},
-    'fusdt'       : {'addr': '0x053c80eA73Dc6941F518a68E2FC52Ac45BDE7c9C',},
-    'fwbtc'       : {'addr': '0x5d9d25c7C457dD82fc8668FFC6B9746b674d4EcB',},
-    'frenbtc'     : {'addr': '0xC391d1b08c1403313B0c28D47202DFDA015633C4',},
-    'fcrvrenwbtc' : {'addr': '0x9aA8F427A17d6B0d91B6262989EdC7D45d6aEdf8', 'startblock': 10815917},
-    'fweth'       : {'addr': '0xFE09e53A81Fe2808bc493ea64319109B5bAa573e',},
-    'fycrv'       : {'addr': '0xF2B223Eb3d2B382Ead8D85f3c1b7eF87c1D35f3A',},
-    'ftusd'       : {'addr': '0x7674622c63Bee7F46E86a4A5A18976693D54441b',},
-    'funi-eth-wbtc': {'addr': '0x01112a60f427205dcA6E229425306923c3Cc2073',},
-    'funi-eth-usdt': {'addr': '0x7DDc3ffF0612E75Ea5ddC0d6Bd4e268f70362Cff',},
-    'funi-eth-usdc': {'addr': '0xA79a083FDD87F73c2f983c5551EC974685D6bb36',},
-    'funi-eth-dai':  {'addr': '0x307E2752e8b8a9C29005001Be66B1c012CA9CDB7',},
-    'fsushi-wbtc-tbtc': {'addr': '0xF553E1f826f42716cDFe02bde5ee76b2a52fc7EB',},
-    'profitshare': {'addr': '0x8f5adC58b32D4e5Ca02EAC0E293D35855999436C',},
-}
-
-earlyemissions = [
-    57569.10,
-    51676.20,
-    26400.00,
-    24977.50
-]
-
-def emissions(weeknum):
-    weeknum = int(weeknum)
-    emitted_this_week = 0
-    supply_this_week = 0
-    EMISSIONS_WEEK5 = 23555.00
-    EMISSIONS_WEEKLY_SCALE = 0.95554375
-    if weeknum > 208:
-        emitted_this_week = 0
-        supply_this_week = 690420
-    elif weeknum >= 5:
-        emitted_this_week = EMISSIONS_WEEK5 * EMISSIONS_WEEKLY_SCALE ** (weeknum - 5)
-        supply_this_week = sum(earlyemissions) + EMISSIONS_WEEK5 * (1 - EMISSIONS_WEEKLY_SCALE ** (weeknum - 4) ) / (1 - EMISSIONS_WEEKLY_SCALE)
-    else:
-        emitted_this_week = earlyemissions[weeknum-1]
-        supply_this_week = sum(earlyemissions[:weeknum])
-    return emitted_this_week, supply_this_week
+oracle_contract = w3.eth.contract(address=UNIPOOL_ORACLE_ADDR, abi=UNIPOOL_ABI)
 
 client = discord.Client(command_prefix='!')
-activity_start = discord.Streaming(
-                name='the prices',
-                url='https://uniswap.info/token/0xa0246c9032bc3a600820415ae600c6388619a14d'
-)
+activity_start = discord.Streaming(name='network reboot',url='https://etherscan.io/address/0x284fa4627AF7Ad1580e68481D0f9Fc7e5Cf5Cf77')
+
+update_index = 0
+
+ASSETS = {
+    'MPH': {
+        'addr':'0x8888801aF4d980682e47f1A9036e589479e835C5',
+        'pool':'0x4D96369002fc5b9687ee924d458A7E5bAa5df34E',
+        'rewards':'',
+        'poolnum':'token0'
+        },
+    'oldMPH': {
+        'addr':'0x75A1169E51A3C6336Ef854f76cDE949F999720B1',
+        'pool':'0xfd9aACca3c5F8EF3AAa787E5Cb8AF0c041D8875f',
+        'rewards':'0x75A1169E51A3C6336Ef854f76cDE949F999720B1',
+        'poolnum':'token0'
+        }
+}
 
 @client.event
 async def on_ready():
@@ -103,51 +66,56 @@ async def on_ready():
     await client.change_presence(activity=activity_start)
     update_price.start()
 
-@tasks.loop(seconds=15)
+@tasks.loop(seconds=20)
 async def update_price():
-    print(f'fetching pool reserves...')
+    global update_index
+    asset = list(ASSETS.keys())[update_index % len(ASSETS)]
+    token = ASSETS[asset]
+    print(f'fetching pool reserves for {token["addr"]}...')
+    pool_contract = w3.eth.contract(address=token['pool'], abi=UNIPOOL_ABI)
     poolvals = pool_contract.functions['getReserves']().call()
+    oraclevals = oracle_contract.functions['getReserves']().call()
     print(f'calculating price...')
-    price = controller_contract.functions['quote'](ONE_18DEC, poolvals[0], poolvals[1]).call()*10**-6
-    
+    oracle_price = controller_contract.functions['quote'](ONE_6DEC, oraclevals[0], oraclevals[1]).call()*10**-18
+    print(f'oracle price: {oracle_price}')
+    token_price = controller_contract.functions['quote'](ONE_18DEC, poolvals[0], poolvals[1]).call()*10**-18
+    price = token_price / oracle_price
     print(f'updating the price...')
-    msg = f'${price:0.2f} FARM'
-    new_price = discord.Streaming(
-        name=msg,
-        url='https://uniswap.info/token/0xa0246c9032bc3a600820415ae600c6388619a14d'
-    )
+    msg = f'${price:0.2f} {asset}'
+    new_price = discord.Streaming(name=msg,url='https://etherscan.io/address/0x284fa4627AF7Ad1580e68481D0f9Fc7e5Cf5Cf77')
     print(msg)
     await client.change_presence(activity=new_price)
+    #update_index += 1
 
 @client.event
 async def on_message(msg):
-    if client.user.id != msg.author.id:
+    if client.user.id != msg.author.id: # and msg.channel.id == 775798003960643634:
         if '!foo' in msg.content:
             await msg.channel.send('bar')
-        if '!bot' in msg.content:
+        elif '!bot' in msg.content:
             embed = discord.Embed(
-                    title='Autonomous Agricultural Assistant, at your service :tractor:',
-                    description=':bar_chart: `!trade`: FARM markets and trading\n'
-                                ':thinking: `!payout`: information on farming rewards\n'
-                                ':globe_with_meridians: `!contribute`: contribute to the community wiki\n'
-                                ':bank: `!vault fdai/fwbtc/etc`: Harvest vault state\n'
-                                ':chart_with_upwards_trend: improve me [on GitHub](https://github.com/brandoncurtis/harvest-discordbot)'
+                    title='80s-themed AI assistant, at your service :sparkles:',
+                    description=f':arrows_counterclockwise: `!reboot` info on the MPH88 reboot\n'
+                                f':bar_chart: `!uniswap`: MPH markets and trading\n'
+                                f':potable_water: `!supply`: MPH max and circulating supply\n'
+                                f':thinking: `!incentives`: information on staking and liquidity rewards\n'
+                                f':globe_with_meridians: `!contribute`: contribute to the community wiki (coming soon)\n'
+                                f':chart_with_upwards_trend: improve me on GitHub (coming soon)'
                     )
             await msg.channel.send(embed=embed)
-        if '!payout' in msg.content:
+        elif '!reboot' in msg.content:
             embed = discord.Embed(
-                    title='When do I get the CRV/SWRV/UNI/&etc? :thinking:',
-                    description='Farmed tokens are sold to grow the value of your deposit :seedling: '
-                                '[read more about farming strategies](https://farm.chainwiki.dev/en/strategy)',
+                    title='88MPH is being rebooted on November 19th',
+                    description=f'**WHY:** two exploits; funds taken in the 1st exploit were reclaimed in the 2nd\n'
+                                f'**HOW:** releasing a new MPH token based on a snapshot before the 2nd exploit\n'
+                                f'**WHAT:** read announcements to [claim MPH](https://88mph.app/claim-mph) ([+ETH for LPs](https://88mph.app/claim-eth)) from the snapshot\n'
+                                f'**WHEN:** farming restarts Nov 20th 20:00 GMT; capital deposits will reopen in a few days\n'
+                                f'`NOTE!` when LPs claim ETH, it is in WETH form; [unwrap to ETH here](https://matcha.xyz/markets/ETH/WETH)\n'
+                                f'`NOTE!` [old MPH](https://etherscan.io/token/{ASSETS["oldMPH"]["addr"]}) no longer has value.\n'
+                                f'address of new MPH: [{ASSETS["MPH"]["addr"]}](https://etherscan.io/token/{ASSETS["MPH"]["addr"]})'
                     )
             await msg.channel.send(embed=embed)
-        if '!contribute' in msg.content:
-            embed = discord.Embed(
-                    title='**:sparkles: Great Idea :sparkles:**',
-                    description='please add that [to the wiki](https://farm.chainwiki.dev/en/contribute)!',
-                    )
-            await msg.channel.send(embed=embed)
-        if '!ap' in msg.content:
+        elif '!ap' in msg.content:
             val = float(msg.content.split(' ')[-1])
             # APY = (1 + APR / n) ** n - 1
             APYfromAPR_daily = 100 * ((1 + val / (100 * 365)) ** 365 - 1)
@@ -158,17 +126,17 @@ async def on_message(msg):
             embed = discord.Embed(
                     title=':man_teacher: **Convert between APR and APY?**',
                     )
-            embed.add_field(name = 'Compounded Daily', value = 'If you redeem and reinvest rewards daily...', inline=False)
-            embed.add_field(
-                    name = f'APR to APY',
-                    value = f'{val:,.2f}% APR is equal to {APYfromAPR_daily:,.2f}% APY. $1000 will make about ${1000*val/100/365:,.2f} per day.',
-                    inline = True
-                    )
-            embed.add_field(
-                    name = f'APY to APR',
-                    value = f'{val:,.2f}% APY is equal to {APRfromAPY_daily:,.2f}% APR. $1000 will make about ${1000*APRfromAPY_daily/100/365:,.2f} per day.',
-                    inline = True
-                    )
+#            embed.add_field(name = 'Compounded Daily', value = 'If you redeem and reinvest rewards daily...', inline=False)
+#            embed.add_field(
+#                    name = f'APR to APY',
+#                    value = f'{val:,.2f}% APR is equal to {APYfromAPR_daily:,.2f}% APY. $1000 will make about ${1000*val/100/365:,.2f} per day.',
+#                    inline = True
+#                    )
+#            embed.add_field(
+#                    name = f'APY to APR',
+#                    value = f'{val:,.2f}% APY is equal to {APRfromAPY_daily:,.2f}% APR. $1000 will make about ${1000*APRfromAPY_daily/100/365:,.2f} per day.',
+#                    inline = True
+#                    )
             embed.add_field(name = 'Compounded Weekly', value = 'If you redeem and reinvest rewards weekly...', inline=False)
             embed.add_field(
                     name = f'APR to APY',
@@ -181,125 +149,76 @@ async def on_message(msg):
                     inline = True
                     )
             await msg.channel.send(embed=embed)
-        if '!supply' in msg.content:
+        elif '!uniswap' in msg.content:
+            asset = 'MPH'
+            uni_addr, uni_deposit_token, uni_deposit_pairing, uni_token_frac = get_uniswapstate(asset)
             embed = discord.Embed(
-                    title=':bar_chart: **What is the FARM token supply?**',
-                    )
-            embed.add_field(
-                    name = 'Maximum Supply',
-                    value = 'Emission is capped at 690,420 FARM tokens. 630,741.56 (91.4%) will be emitted in the first year.',
-                    inline = False
-                    )
-            if 'week' in msg.content:
-                    weeknum = msg.content.split(' ')[-1]
-                    emissions_this_week, supply_this_week = emissions(weeknum)
-                    embed.add_field(
-                            name = f'Emissions during Week {weeknum}',
-                            value = f'{emissions_this_week:,.2f} FARM will be emitted',
-                            inline = True
-                            )
-                    embed.add_field(
-                            name = f'Supply at the end of Week {weeknum}',
-                            value = f'{supply_this_week:,.2f} FARM total supply',
-                            inline = True
-                            )
-            await msg.channel.send(embed=embed)
-        if '!trade' in msg.content:
-            embed = discord.Embed(
-                    title='**How To Buy FARM :bar_chart:**',
-                    )
-            embed.add_field(
-                    name = 'Token Info :mag:',
-                    value = '[0xa0246c9032bC3A600820415aE600c6388619A14D](https://etherscan.io/address/0xa0246c9032bc3a600820415ae600c6388619a14d)',
-                    inline = False
-                    )
-            embed.add_field(
-                    name = 'Uniswap :arrows_counterclockwise:',
-                    value = '[swap now](https://app.uniswap.org/#/swap?outputCurrency=0xa0246c9032bc3a600820415ae600c6388619a14d), '
-                            '[pool info](https://uniswap.info/token/0xa0246c9032bc3a600820415ae600c6388619a14d)',
-                    inline = True
-                    )
-            embed.add_field(
-                    name = 'DEX Aggregators :arrow_right::arrow_left:',
-                    value = '[debank](https://debank.com/swap?to=0xa0246c9032bc3a600820415ae600c6388619a14d), '
-                            '[1inch](https://1inch.exchange/#/USDC/FARM), '
-                            '[limit orders](https://1inch.exchange/#/limit-order/USDC/FARM)',
-                    inline = True
-                    )
-            embed.add_field(
-                    name = 'Trading Stats :chart_with_upwards_trend:',
-                    value = '[CoinGecko](https://www.coingecko.com/en/coins/harvest-finance), '
-                            '[CoinMarketCap](https://coinmarketcap.com/currencies/harvest-finance/), '
-                            '[DeBank](https://debank.com/projects/harvest), '
-                            '[dapp.com](https://www.dapp.com/app/harvest-finance), '
-                            #'[defiprime](https://defiprime.com/product/harvest), '
-                            'defipulse (soon!)',
-                    inline = False
-                    )
-            await msg.channel.send(embed=embed)
-        if '!vault' in msg.content:
-            vault = msg.content.split(' ')[-1].lower()
-            underlying = vault[1:]
-            address, shareprice, vault_total, vault_buffer, vault_target, vault_strat, vault_strat_future, vault_strat_future_time = get_vaultstate(vault)
-            vault_invested = vault_total - vault_buffer
-            embed = discord.Embed(
-                    title=f'{vault} Vault State :bank::mag:',
-                    description=f':map: {vault} address: [{address}](https://etherscan.io/address/{address})\n'
-                                f':moneybag: {vault} share price = {shareprice} {underlying}\n'
-                                f':sponge: {underlying} withdrawal buffer = {vault_buffer:,.4f} {underlying}\n'
-                                f':bar_chart: {underlying} invested = {vault_invested:,.4f} '
-                                f'{underlying} ({100*vault_invested/vault_total:0.2f}%, target {100*vault_target:0.2f}%)\n'
-                                f':compass: vault strategy: [{vault_strat}](https://etherscan.io/address/{vault_strat})\n'
-                    )
-            if vault_strat_future_time != 0:
-                vault_update_dt = datetime.datetime.fromtimestamp(vault_strat_future_time)
-                embed.description += f':rocket: future strategy: [{vault_strat_future}](https://etherscan.io/address/{vault_strat_future})\n'
-                vault_update_timeleft = ( vault_update_dt - datetime.datetime.now() )
-                if vault_update_timeleft.total_seconds() < 0:
-                    embed.description += f':alarm_clock: future strategy can be activated at any time; [subscribe to updates on Twitter](https://twitter.com/farmer_fud)'
-                else:
-                    embed.description += f':alarm_clock: future strategy can be activated at {vault_update_dt} GMT '
-                    embed.description += f'({vault_update_timeleft.total_seconds()/3600:.1f} hours); [subscribe to updates on Twitter](https://twitter.com/farmer_fud)'
-            else:
-                embed.description += f':alarm_clock: no strategy updates are pending; [subscribe to updates on Twitter](https://twitter.com/farmer_fud)'
-            await msg.channel.send(embed=embed)
-        if '!profitshare' in msg.content:
-            ps_address = vault_addr['profitshare']['addr']
-            ps_deposits, ps_rewardperday, ps_rewardfinish, ps_stake_frac = get_profitsharestate()
-            ps_apr = 100* (ps_rewardperday / ps_deposits) * 365
-            ps_timeleft = ( ps_rewardfinish - datetime.datetime.now() )
-            embed = discord.Embed(
-                    title=f':bank::mag: FARM Profit Sharing',
-                    description=f':map: Profitshare address: [{ps_address}](https://etherscan.io/address/{ps_address})\n'
-                                f':moneybag: Profitshare deposits: `{ps_deposits:,.2f}` FARM (`{100*ps_stake_frac:0.2f}%` of supply)\n'
-                                f':bar_chart: Profitshare rewards per day: `{ps_rewardperday:,.2f}` FARM'
-                                f' (`{ps_apr:.2f}%` instantaneous APR)\n'
-                                f':alarm_clock: Current harvests pay out until: `{ps_rewardfinish} GMT`'
-                                f' (`{ps_timeleft.total_seconds()/3600:.1f}` hours)'
-                    )
-            await msg.channel.send(embed=embed)
-        if '!uniswap' in msg.content:
-            uni_addr, uni_deposit_farm, uni_deposit_usdc, uni_farm_frac = get_uniswapstate()
-            embed = discord.Embed(
-                    title=f':mag: FARM:USDC Uniswap Pool',
+                    title=f':mag: MPH:ETH Uniswap Pool',
                     description=f':bank: Uniswap contract: [{uni_addr}](https://etherscan.io/address/{uni_addr})\n'
-                                f':moneybag: Liquidity: `{uni_deposit_farm:,.2f}` FARM (`{100*uni_farm_frac:.2f}%` of supply), `{uni_deposit_usdc:,.2f}` USDC\n'
-                                f':arrows_counterclockwise: [Trade FARM](https://app.uniswap.org/#/swap?outputCurrency=0xa0246c9032bc3a600820415ae600c6388619a14d), '
-                                f'[Add Liquidity](https://app.uniswap.org/#/add/0xa0246c9032bC3A600820415aE600c6388619A14D/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48), '
-                                f'[Remove Liquidity](https://app.uniswap.org/#/remove/0xa0246c9032bC3A600820415aE600c6388619A14D/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)\n'
-                                f':bar_chart: [FARM:USDC Uniswap chart](https://beta.dex.vision/?ticker=UniswapV2:FARMUSDC-0x514906FC121c7878424a5C928cad1852CC545892&interval=15)'
+                                f':moneybag: Liquidity: `{uni_deposit_token:,.2f}` {asset} (`{100*uni_token_frac:.2f}%` of supply), `{uni_deposit_pairing:,.2f}` ETH\n'
+                                f':arrows_counterclockwise: [Trade {asset}](https://app.uniswap.org/#/swap?outputCurrency={ASSETS[asset]["addr"]}), '
+                                f'[Add Liquidity](https://app.uniswap.org/#/add/eth/{ASSETS[asset]["addr"]}), '
+                                f'[Remove Liquidity](https://app.uniswap.org/#/remove/ETH/{ASSETS[asset]["addr"]})\n'
+                                f':bar_chart: [{asset}:ETH Uniswap chart](https://www.dextools.io/app/uniswap/pair-explorer/{uni_addr})'
                     )
             await msg.channel.send(embed=embed)
+        elif '!incentives' in msg.content or '!farm' in msg.content:
+            embed = discord.Embed(
+                    title='How do I farm 88MPH?',
+                    description=f'**Short term:** provide liquidity in the ETH:MPH Uniswap pool (14 days, starts Nov 20th 20:00 GMT)\n'
+                                f'**Long term:** stake MPH to receive a share of investment profits\n'
+                                f'**Alternative:** deposit funds to receive MPH; 90% must be paid back to withdraw!\n'
+                                f'(early withdrawals require up to 100% payback of received MPH)'
+                    )
+            await msg.channel.send(embed=embed)
+        elif '!supply' in msg.content:
+            asset = 'MPH'
+            supply = get_supply('MPH')
+            circulating = get_supply_circulating('MPH')
+            circulating_frac = circulating / supply
+            uni_supply = get_supply('MPH', ASSETS[asset]['pool'])
+            uni_supply_frac = uni_supply / supply
+            embed = discord.Embed(
+                    title=f':bar_chart: Current and maximum supply of MPH?',
+                    description=f'**Max Supply:** maximum supply is unlimited\n'
+                    f'**Total Supply:** `{supply:,.2f}` {asset}, `{uni_supply:,.2f}` {asset} (`{100*uni_supply_frac:.2f}%`) in Uniswap\n'
+                    f'**Circulating:** `{circulating:,.2f}` {asset} (`{100*circulating_frac:.2f}%`)\n'
+                    f'**Distribution:** by liquidity mining and to capital depositors\n'
+                    f'90% of deposit incentives are paid back to the Treasury at redemption;\n'
+                    f'the community can decide to issue more incentives, pay for development, burn...'
+                    )
+            await msg.channel.send(embed=embed)
+        else:
+            return
 
-def get_uniswapstate():
-    uni_addr = UNIPOOL_ADDR
+def get_supply_circulating(asset):
+    token_contract = w3.eth.contract(address=ASSETS[asset]['addr'], abi=UNIPOOL_ABI)
+    token_decimals = token_contract.functions['decimals']().call()
+    token_totalsupply = token_contract.functions['totalSupply']().call()*10**(-1*token_decimals)
+    token_circulating = token_totalsupply
+    for excluded_addr in CIRCULATING_EXCLUDED[asset]:
+        token_circulating = token_circulating - token_contract.functions['balanceOf'](excluded_addr).call()*10**(-1*token_decimals)
+    return token_circulating
+
+def get_supply(asset, address=''):
+    token_contract = w3.eth.contract(address=ASSETS[asset]['addr'], abi=UNIPOOL_ABI)
+    token_decimals = token_contract.functions['decimals']().call()
+    if address != '':
+        token_balance = token_contract.functions['balanceOf'](address).call()*10**(-1*token_decimals)
+        return token_balance
+    else: 
+        token_totalsupply = token_contract.functions['totalSupply']().call()*10**(-1*token_decimals)
+        return token_totalsupply
+
+def get_uniswapstate(asset):
+    uni_addr = ASSETS[asset]['pool']
+    pool_contract = w3.eth.contract(address=uni_addr, abi=UNIPOOL_ABI)
     poolvals = pool_contract.functions['getReserves']().call()
-    uni_deposit_farm = poolvals[0]*10**-18
-    uni_deposit_usdc = poolvals[1]*10**-6
-    farm_contract = w3.eth.contract(address=FARM_ADDR, abi=VAULT_ABI)
-    farm_totalsupply = farm_contract.functions['totalSupply']().call()*10**-18
-    uni_farm_frac = uni_deposit_farm / farm_totalsupply
-    return (uni_addr, uni_deposit_farm, uni_deposit_usdc, uni_farm_frac)
+    uni_deposit_token = poolvals[0]*10**-18
+    uni_deposit_pairing = poolvals[1]*10**-18
+    token_totalsupply = get_supply(asset)
+    uni_token_frac = uni_deposit_token / token_totalsupply
+    return (uni_addr, uni_deposit_token, uni_deposit_pairing, uni_token_frac)
 
 
 def get_profitsharestate():
@@ -333,7 +252,9 @@ def get_vaultstate(vault):
     return (vault_address, vault_shareprice, vault_total, vault_buffer, vault_target, vault_strat, vault_strat_future, vault_strat_future_time)
 
 def main():
+    print(f'starting discord bot...')
     client.run(DISCORD_BOT_TOKEN)
+    print(f'discord bot started')
 
 if __name__ == '__main__':
     main()
