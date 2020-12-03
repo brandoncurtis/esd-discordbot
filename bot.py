@@ -17,17 +17,15 @@ DISCORD_WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 NODE_URL = os.getenv("NODE_URL")
 START_BLOCK = os.getenv("START_BLOCK")
+TOKEN_ABI = os.getenv("TOKEN_ABI")
 UNIROUTER_ADDR = os.getenv("UNIROUTER_ADDR")
 UNIROUTER_ABI = os.getenv("UNIROUTER_ABI")
-UNIPOOL_ADDR= os.getenv("UNIPOOL_ADDR")
 UNIPOOL_ABI = os.getenv("UNIPOOL_ABI")
-VAULT_ABI = os.getenv("VAULT_ABI")
-PS_ABI = os.getenv("PS_ABI")
+ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 ONE_18DEC = 1000000000000000000
 ONE_6DEC = 1000000
-ZERO_ADDR = '0x0000000000000000000000000000000000000000'
-UNIPOOL_ORACLE_ADDR = '0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc'
-MAIN_ASSET = 'ESD'
+MAIN_BASETOKEN = 'ESD'
+
 CIRCULATING_EXCLUDED = {
             'MPH': [
                 '0xd48Df82a6371A9e0083FbfC0DF3AF641b8E21E44',
@@ -38,20 +36,29 @@ CIRCULATING_EXCLUDED = {
             }
 
 w3 = Web3(Web3.HTTPProvider(NODE_URL))
-controller_contract = w3.eth.contract(address=UNIROUTER_ADDR, abi=UNIROUTER_ABI)
-oracle_contract = w3.eth.contract(address=UNIPOOL_ORACLE_ADDR, abi=UNIPOOL_ABI)
 
 client = discord.Client(command_prefix='!')
-activity_start = discord.Streaming(name='network reboot',url='https://etherscan.io/address/0x284fa4627AF7Ad1580e68481D0f9Fc7e5Cf5Cf77')
+activity_start = discord.Streaming(name='bot startup',url='https://etherscan.io/address/0x284fa4627AF7Ad1580e68481D0f9Fc7e5Cf5Cf77')
 
 update_index = 0
 
 ASSETS = {
     'ESD': {
         'addr':'0x36F3FD68E7325a35EB768F1AedaAe9EA0689d723',
-        'pool':'0x88ff79eB2Bc5850F27315415da8685282C7610F9',
-        'rewards':'',
-        'poolnum':'token0'
+        'main_quotetoken':'USDC',
+        'pools': {
+            'USDC': {
+                'router':UNIROUTER_ADDR,
+                'addr':'0x88ff79eB2Bc5850F27315415da8685282C7610F9',
+                'quotetoken_index': 'token1',
+                'rewards':'0x4082D11E506e3250009A991061ACd2176077C88f',
+                'oracles': [],
+                #'oracle': [
+                #    {'addr':'0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc','type':'mult',}
+                #    {'addr':'0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc','type':'div',}
+                #    ],
+                },
+            },
         },
 }
 
@@ -64,23 +71,47 @@ async def on_ready():
 @tasks.loop(seconds=20)
 async def update_price():
     global update_index
-    asset = list(ASSETS.keys())[update_index % len(ASSETS)]
-    token = ASSETS[asset]
-    print(f'fetching pool reserves for {token["addr"]}...')
-    pool_contract = w3.eth.contract(address=token['pool'], abi=UNIPOOL_ABI)
+    asset_list = list(ASSETS.keys())
+    basetoken_name = asset_list[update_index % len(asset_list)]
+    basetoken = ASSETS[basetoken_name]
+    quotetoken_name = basetoken['main_quotetoken']
+    pool = basetoken['pools'][quotetoken_name]
+    basetoken_contract = w3.eth.contract(address=basetoken['addr'], abi=TOKEN_ABI)
+    pool_contract = w3.eth.contract(address=pool['addr'], abi=UNIPOOL_ABI)
+    quotetoken_addr = pool_contract.functions[pool['quotetoken_index']]().call()
+    quotetoken_contract = w3.eth.contract(address=quotetoken_addr, abi=TOKEN_ABI)
+    router_contract = w3.eth.contract(address=pool['router'], abi=UNIROUTER_ABI)
+
+    # fetch pool state
+    print(f'fetching pool reserves for {basetoken_name} ({basetoken["addr"]})...')
     poolvals = pool_contract.functions['getReserves']().call()
-    oraclevals = oracle_contract.functions['getReserves']().call()
+    #oraclevals = oracle_contract.functions['getReserves']().call()
+    
+    # calculate price
     print(f'calculating price...')
-    #oracle_price = controller_contract.functions['quote'](ONE_6DEC, oraclevals[0], oraclevals[1]).call()*10**-18
-    #print(f'oracle price: {oracle_price}')
-    token_price = controller_contract.functions['quote'](ONE_18DEC, poolvals[0], poolvals[1]).call()*10**-6
-    price = token_price #/ oracle_price
+    atoms_per_basetoken = 10**basetoken_contract.functions['decimals']().call()
+    atoms_per_quotetoken = 10**quotetoken_contract.functions['decimals']().call()
+    token_price = router_contract.functions['quote'](atoms_per_basetoken, poolvals[0], poolvals[1]).call() / atoms_per_quotetoken
+    oracle_price = 1
+    for oracle in pool['oracles']:
+        oracle_contract = w3.eth.contract(address=oracle['addr'])
+        oracle_reserves = oracle_contract.functions['getReserves']().call()
+        atoms_per_oracle_token0 = 10**w3.eth.contract(address=oracle_contract.functions['token0']().call()).functions['decimals']().call()
+        atoms_per_oracle_token1 = 10**w3.eth.contract(address=oracle_contract.functions['token1']().call()).functions['decimals']().call()
+        oracle_price_step = oracle_price * router_contract.functions['quote'](ONE_6DEC, oraclevals[0], oraclevals[1]).call()*10**-18
+        if oracle['type'] == 'div':
+            oracle_price_step = oracle_price_step ** -1
+        oracle_price = oracle_price * oracle_price_step
+    print(f'oracle price: {oracle_price}')
+    price = token_price * oracle_price
+
+    # update price
     print(f'updating the price...')
-    msg = f'${price:0.4f} {asset}'
-    new_price = discord.Streaming(name=msg,url='https://etherscan.io/address/0x284fa4627AF7Ad1580e68481D0f9Fc7e5Cf5Cf77')
+    msg = f'${price:0.4f} {basetoken_name}'
+    new_price = discord.Streaming(name=msg,url=f'https://etherscan.io/token/basetoken["addr"]')
     print(msg)
     await client.change_presence(activity=new_price)
-    #update_index += 1
+    update_index += 1
 
 @client.event
 async def on_message(msg):
