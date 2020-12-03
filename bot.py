@@ -50,7 +50,8 @@ ASSETS = {
             'USDC': {
                 'router':UNIROUTER_ADDR,
                 'addr':'0x88ff79eB2Bc5850F27315415da8685282C7610F9',
-                'quotetoken_index': 'token1',
+                'basetoken_index': 0,
+                'quotetoken_index': 1,
                 'rewards':'0x4082D11E506e3250009A991061ACd2176077C88f',
                 'oracles': [],
                 #'oracle': [
@@ -78,7 +79,7 @@ async def update_price():
     pool = basetoken['pools'][quotetoken_name]
     basetoken_contract = w3.eth.contract(address=basetoken['addr'], abi=TOKEN_ABI)
     pool_contract = w3.eth.contract(address=pool['addr'], abi=UNIPOOL_ABI)
-    quotetoken_addr = pool_contract.functions[pool['quotetoken_index']]().call()
+    quotetoken_addr = pool_contract.functions[f'token{pool["quotetoken_index"]}']().call()
     quotetoken_contract = w3.eth.contract(address=quotetoken_addr, abi=TOKEN_ABI)
     router_contract = w3.eth.contract(address=pool['router'], abi=UNIROUTER_ABI)
 
@@ -118,29 +119,29 @@ async def on_message(msg):
     if client.user.id != msg.author.id: # and msg.channel.id == 775798003960643634:
         if '!foo' in msg.content:
             await msg.channel.send('bar')
-        elif '!bot' in msg.content:
-            embed = discord.Embed(
-                    title='80s-themed AI assistant, at your service :sparkles:',
-                    description=f':arrows_counterclockwise: `!reboot` info on the MPH88 reboot\n'
-                                f':bar_chart: `!uniswap`: MPH markets and trading\n'
-                                f':potable_water: `!supply`: MPH max and circulating supply\n'
-                                f':thinking: `!incentives`: information on staking and liquidity rewards\n'
-                                f':globe_with_meridians: `!contribute`: contribute to the community wiki (coming soon)\n'
-                                f':chart_with_upwards_trend: improve me on GitHub (coming soon)'
-                    )
-            await msg.channel.send(embed=embed)
-        elif '!reboot' in msg.content:
-            embed = discord.Embed(
-                    title='88MPH is being rebooted on November 19th',
-                    description=f'**WHY:** two exploits; funds taken in the 1st exploit were reclaimed in the 2nd\n'
-                                f'**HOW:** releasing a new MPH token based on a snapshot before the 2nd exploit\n'
-                                f'**WHAT:** read announcements to [claim MPH](https://88mph.app/claim-mph) ([+ETH for LPs](https://88mph.app/claim-eth)) from the snapshot\n'
-                                f'**WHEN:** farming restarts Nov 20th 20:00 GMT; capital deposits will reopen in a few days\n'
-                                f'`NOTE!` when LPs claim ETH, it is in WETH form; [unwrap to ETH here](https://matcha.xyz/markets/ETH/WETH)\n'
-                                f'`NOTE!` [old MPH](https://etherscan.io/token/{ASSETS["oldMPH"]["addr"]}) no longer has value.\n'
-                                f'address of new MPH: [{ASSETS["MPH"]["addr"]}](https://etherscan.io/token/{ASSETS["MPH"]["addr"]})'
-                    )
-            await msg.channel.send(embed=embed)
+#        elif '!bot' in msg.content:
+#            embed = discord.Embed(
+#                    title='80s-themed AI assistant, at your service :sparkles:',
+#                    description=f':arrows_counterclockwise: `!reboot` info on the MPH88 reboot\n'
+#                                f':bar_chart: `!uniswap`: MPH markets and trading\n'
+#                                f':potable_water: `!supply`: MPH max and circulating supply\n'
+#                                f':thinking: `!incentives`: information on staking and liquidity rewards\n'
+#                                f':globe_with_meridians: `!contribute`: contribute to the community wiki (coming soon)\n'
+#                                f':chart_with_upwards_trend: improve me on GitHub (coming soon)'
+#                    )
+#            await msg.channel.send(embed=embed)
+#        elif '!reboot' in msg.content:
+#            embed = discord.Embed(
+#                    title='88MPH is being rebooted on November 19th',
+#                    description=f'**WHY:** two exploits; funds taken in the 1st exploit were reclaimed in the 2nd\n'
+#                                f'**HOW:** releasing a new MPH token based on a snapshot before the 2nd exploit\n'
+#                                f'**WHAT:** read announcements to [claim MPH](https://88mph.app/claim-mph) ([+ETH for LPs](https://88mph.app/claim-eth)) from the snapshot\n'
+#                                f'**WHEN:** farming restarts Nov 20th 20:00 GMT; capital deposits will reopen in a few days\n'
+#                                f'`NOTE!` when LPs claim ETH, it is in WETH form; [unwrap to ETH here](https://matcha.xyz/markets/ETH/WETH)\n'
+#                                f'`NOTE!` [old MPH](https://etherscan.io/token/{ASSETS["oldMPH"]["addr"]}) no longer has value.\n'
+#                                f'address of new MPH: [{ASSETS["MPH"]["addr"]}](https://etherscan.io/token/{ASSETS["MPH"]["addr"]})'
+#                    )
+#            await msg.channel.send(embed=embed)
         elif '!ap' in msg.content:
             val = float(msg.content.split(' ')[-1])
             # APY = (1 + APR / n) ** n - 1
@@ -176,7 +177,7 @@ async def on_message(msg):
                     )
             await msg.channel.send(embed=embed)
         elif '!uniswap' in msg.content:
-            asset = MAIN_ASSET
+            asset = MAIN_BASETOKEN
             uni_addr, uni_deposit_token, uni_deposit_pairing, uni_token_frac = get_uniswapstate(asset)
             embed = discord.Embed(
                     title=f':mag: {asset} Uniswap Pool',
@@ -188,34 +189,34 @@ async def on_message(msg):
                                 f':bar_chart: [{asset}:USDC Uniswap chart](https://www.dextools.io/app/uniswap/pair-explorer/{uni_addr})'
                     )
             await msg.channel.send(embed=embed)
-        elif '!incentives' in msg.content or '!farm' in msg.content:
-            embed = discord.Embed(
-                    title='How do I farm 88MPH?',
-                    description=f'**Short term:** provide liquidity in the ETH:MPH Uniswap pool (14 days, starts Nov 20th 20:00 GMT)\n'
-                                f'**Long term:** stake MPH to receive a share of investment profits\n'
-                                f'**Alternative:** deposit funds to receive MPH; 90% must be paid back to withdraw!\n'
-                                f'(early withdrawals require up to 100% payback of received MPH)'
-                    )
-            await msg.channel.send(embed=embed)
-        elif '!supply' in msg.content:
-            asset = 'MPH'
-            supply = get_supply('MPH')
-            circulating = get_supply_circulating('MPH')
-            circulating_frac = circulating / supply
-            uni_supply = get_supply('MPH', ASSETS[asset]['pool'])
-            uni_supply_frac = uni_supply / supply
-            embed = discord.Embed(
-                    title=f':bar_chart: Current and maximum supply of MPH?',
-                    description=f'**Max Supply:** maximum supply is unlimited\n'
-                    f'**Total Supply:** `{supply:,.2f}` {asset}, `{uni_supply:,.2f}` {asset} (`{100*uni_supply_frac:.2f}%`) in Uniswap\n'
-                    f'**Circulating:** `{circulating:,.2f}` {asset} (`{100*circulating_frac:.2f}%`)\n'
-                    f'**Distribution:** by liquidity mining and to capital depositors\n'
-                    f'90% of deposit incentives are paid back to the Treasury at redemption;\n'
-                    f'the community can decide to issue more incentives, pay for development, burn...'
-                    )
-            await msg.channel.send(embed=embed)
-        else:
-            return
+#        elif '!incentives' in msg.content or '!farm' in msg.content:
+#            embed = discord.Embed(
+#                    title='How do I farm 88MPH?',
+#                    description=f'**Short term:** provide liquidity in the ETH:MPH Uniswap pool (14 days, starts Nov 20th 20:00 GMT)\n'
+#                                f'**Long term:** stake MPH to receive a share of investment profits\n'
+#                                f'**Alternative:** deposit funds to receive MPH; 90% must be paid back to withdraw!\n'
+#                                f'(early withdrawals require up to 100% payback of received MPH)'
+#                    )
+#            await msg.channel.send(embed=embed)
+#        elif '!supply' in msg.content:
+#            asset = 'MPH'
+#            supply = get_supply('MPH')
+#            circulating = get_supply_circulating('MPH')
+#            circulating_frac = circulating / supply
+#            uni_supply = get_supply('MPH', ASSETS[asset]['pool'])
+#            uni_supply_frac = uni_supply / supply
+#            embed = discord.Embed(
+#                    title=f':bar_chart: Current and maximum supply of MPH?',
+#                    description=f'**Max Supply:** maximum supply is unlimited\n'
+#                    f'**Total Supply:** `{supply:,.2f}` {asset}, `{uni_supply:,.2f}` {asset} (`{100*uni_supply_frac:.2f}%`) in Uniswap\n'
+#                    f'**Circulating:** `{circulating:,.2f}` {asset} (`{100*circulating_frac:.2f}%`)\n'
+#                    f'**Distribution:** by liquidity mining and to capital depositors\n'
+#                    f'90% of deposit incentives are paid back to the Treasury at redemption;\n'
+#                    f'the community can decide to issue more incentives, pay for development, burn...'
+#                    )
+#            await msg.channel.send(embed=embed)
+#        else:
+#            return
 
 def get_supply_circulating(asset):
     token_contract = w3.eth.contract(address=ASSETS[asset]['addr'], abi=UNIPOOL_ABI)
@@ -228,24 +229,31 @@ def get_supply_circulating(asset):
 
 def get_supply(asset, address=''):
     token_contract = w3.eth.contract(address=ASSETS[asset]['addr'], abi=UNIPOOL_ABI)
-    token_decimals = token_contract.functions['decimals']().call()
+    atoms_per_token = 10 ** token_contract.functions['decimals']().call()
     if address != '':
-        token_balance = token_contract.functions['balanceOf'](address).call()*10**(-1*token_decimals)
+        token_balance = token_contract.functions['balanceOf'](address).call() / atoms_per_token
         return token_balance
     else: 
-        token_totalsupply = token_contract.functions['totalSupply']().call()*10**(-1*token_decimals)
+        token_totalsupply = token_contract.functions['totalSupply']().call() / atoms_per_token
         return token_totalsupply
 
 def get_uniswapstate(asset):
-    uni_addr = ASSETS[asset]['pool']
-    pool_contract = w3.eth.contract(address=uni_addr, abi=UNIPOOL_ABI)
-    poolvals = pool_contract.functions['getReserves']().call()
-    uni_deposit_token = poolvals[0]*10**-18
-    uni_deposit_pairing = poolvals[1]*10**-18
-    token_totalsupply = get_supply(asset)
-    uni_token_frac = uni_deposit_token / token_totalsupply
-    return (uni_addr, uni_deposit_token, uni_deposit_pairing, uni_token_frac)
-
+    basetoken_name = asset
+    basetoken = ASSETS[basetoken_name]
+    quotetoken_name = basetoken['main_quotetoken']
+    pool = basetoken['pools'][quotetoken_name]
+    pool_contract = w3.eth.contract(address=pool['addr'], abi=UNIPOOL_ABI)
+    basetoken_contract = w3.eth.contract(address=basetoken['addr'], abi=TOKEN_ABI)
+    quotetoken_addr = pool_contract.functions[f'token{pool["quotetoken_index"]}']().call()
+    quotetoken_contract = w3.eth.contract(address=quotetoken_addr, abi=TOKEN_ABI)
+    atoms_per_basetoken = 10**basetoken_contract.functions['decimals']().call()
+    atoms_per_quotetoken = 10**quotetoken_contract.functions['decimals']().call()
+    pool_deposits = pool_contract.functions['getReserves']().call()
+    pool_basetoken_deposits = pool_deposits[pool['basetoken_index']] / atoms_per_basetoken
+    pool_quotetoken_deposits = pool_deposits[pool['quotetoken_index']] / atoms_per_quotetoken
+    basetoken_totalsupply = get_supply(basetoken_name)
+    pool_basetoken_supplyfrac = pool_basetoken_deposits / basetoken_totalsupply
+    return (pool['addr'], pool_basetoken_deposits, pool_quotetoken_deposits, pool_basetoken_supplyfrac)
 
 def get_profitsharestate():
     ps_address = vault_addr['profitshare']['addr']
