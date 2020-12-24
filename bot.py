@@ -35,7 +35,7 @@ CIRCULATING_EXCLUDED = {
             ]
             }
 
-w3 = Web3(Web3.HTTPProvider(NODE_URL))
+w3 = Web3(Web3.HTTPProvider(NODE_URL, request_kwargs={'timeout': 120}))
 
 client = discord.Client(command_prefix='!')
 activity_start = discord.Streaming(name='bot startup',url='https://etherscan.io/address/0x284fa4627AF7Ad1580e68481D0f9Fc7e5Cf5Cf77')
@@ -112,7 +112,7 @@ async def update_price():
 
     # update price
     print(f'updating the price...')
-    msg = f'${price:0.4f} {basetoken_name}'
+    msg = f'${price:0.4f} {["twap","spot"][update_index % 2]}'
     new_price = discord.Streaming(name=msg,url=f'https://etherscan.io/token/basetoken["addr"]')
     print(msg)
     await client.change_presence(activity=new_price)
@@ -231,9 +231,12 @@ def get_twap():
     advance_filter = dao_contract.events.Advance.createFilter(fromBlock = w3.eth.blockNumber - int(BLOCK_PER_DAY / 3))
     advance_blocknum = advance_filter.get_all_entries()[-1].blockNumber
     # calculate the twap
+    pool_contract = w3.eth.contract(address=ASSETS['ESD']['pools']['USDC']['addr'], abi=UNIPOOL_ABI)
+    time_t1  = pool_contract.functions['getReserves']().call()[-1]
+    time_t0 = pool_contract.functions['getReserves']().call(block_identifier = advance_blocknum)[-1]
     price_t1 = pool_contract.functions['price0CumulativeLast']().call()
     price_t0 = pool_contract.functions['price0CumulativeLast']().call(block_identifier = advance_blocknum)
-    elapsed_seconds = w3.eth.getBlock(w3.eth.blockNumber).timestamp - w3.eth.getBlock(advance_blocknum).timestamp
+    elapsed_seconds = time_t1 - time_t0
     twap = ( int( (10 ** 24) * (price_t1 - price_t0) / elapsed_seconds) >> 112 ) * (10 ** -12)
     print(f'ESD TWAP since last checkpoint is: ${twap:0.4f}') 
     return twap
